@@ -1,9 +1,9 @@
-// javascript.js - DocHelp UI interactions & helpers
+// script.js - ini kumpulan script javascript buat bikin tampilan makin interaktif & ngebantu validasi form di client-side
 
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("DocHelp JS initialized.");
+  console.log("Mantap! Script DocHelp udah jalan dengan lancar.");
 
-  // Password confirmation real-time check for Register form
+  // validasi real-time konfirmasi password pas user lagi ngetik di form register
   const registerForm = document.querySelector('form[action="register.php"]');
   if (registerForm) {
     const passwordInput = document.getElementById("password");
@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function validatePasswordMatch() {
       if (confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
-        confirmPasswordInput.setCustomValidity("Passwords do not match");
+        confirmPasswordInput.setCustomValidity("Waduh, passwordnya belum sama nih!");
       } else {
         confirmPasswordInput.setCustomValidity("");
       }
@@ -23,24 +23,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Smooth delete confirmation
+  // kasih pop-up konfirmasi pas tombol hapus yang merah diklik biar ga kepencet ga sengaja
   const deleteButtons = document.querySelectorAll(".btn-danger");
   deleteButtons.forEach((btn) => {
     btn.addEventListener("click", function (e) {
-      if (!confirm("Are you sure you want to proceed with this deletion?")) {
+      if (!confirm("Beneran mau ngehapus data ini bro? Data yang dihapus ga bisa balik lagi lho!")) {
         e.preventDefault();
       }
     });
   });
 
-  // Ensure appointment date picker starts from today
+  // batasin inputan tanggal booking biar minimal hari ini (ga boleh milih tanggal kemarin)
   const apptDateInput = document.getElementById("appointment_date");
   if (apptDateInput) {
     const today = new Date().toISOString().split("T")[0];
     apptDateInput.min = today;
   }
 
-  // Payment proof image instant preview
+  // fitur preview gambar bukti transfer secara instan waktu user milih file
   const proofInput = document.getElementById("proof_image");
   if (proofInput) {
     proofInput.addEventListener("change", function (e) {

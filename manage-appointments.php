@@ -1,20 +1,22 @@
 <?php
-// manage-appointments.php - Admin Manage Appointments
+// manage-appointments.php - panel kontrol admin buat ngeliat dan ngubah status janji temu pasien
 $pageTitle = 'Manage Appointments';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// kunci buat admin doang
 requireAdmin();
 
 $errors = [];
 $success = '';
 
+// nangkep pesan sukses setelah aksi (pola PRG)
 if (isset($_GET['msg'])) {
-    if ($_GET['msg'] === 'updated') $success = "Appointment status updated successfully.";
-    elseif ($_GET['msg'] === 'deleted') $success = "Appointment deleted successfully.";
+    if ($_GET['msg'] === 'updated') $success = "Status janji temu berhasil diupdate!";
+    elseif ($_GET['msg'] === 'deleted') $success = "Data janji temu berhasil dihapus dari sistem.";
 }
 
-// Handle Status Update
+// proses update status janji temu (Waiting -> Completed / Canceled)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
     $apptId = intval($_POST['appointment_id'] ?? 0);
     $newStatus = trim($_POST['status'] ?? '');
@@ -28,13 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             header("Location: manage-appointments.php?msg=updated");
             exit();
         } else {
-            $errors[] = "Failed to update appointment: " . $conn->error;
+            $errors[] = "Gagal ngeupdate status janji temu: " . $conn->error;
             $stmt->close();
         }
     }
 }
 
-// Handle Delete
+// proses hapus data janji temu
 if (isset($_GET['delete'])) {
     $delId = intval($_GET['delete']);
     $stmt = $conn->prepare("DELETE FROM appointments WHERE id = ?");
@@ -44,12 +46,12 @@ if (isset($_GET['delete'])) {
         header("Location: manage-appointments.php?msg=deleted");
         exit();
     } else {
-        $errors[] = "Failed to delete appointment: " . $conn->error;
+        $errors[] = "Gagal ngehapus janji temu: " . $conn->error;
         $stmt->close();
     }
 }
 
-// Fetch all appointments
+// ambil seluruh data booking pasien, gabungin sama nama pasien & nama dokter
 $sql = "SELECT a.id, a.appointment_date, a.time_slot, a.status,
                u.name AS patient_name,
                d.doctor_name
@@ -64,6 +66,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Admin - Appointment List</h1>
 
+<!-- alert error -->
 <?php if (!empty($errors)): ?>
   <div class="alert alert-danger">
     <ul style="margin-left: 20px;">
@@ -74,10 +77,12 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
+<!-- alert sukses -->
 <?php if (!empty($success)): ?>
   <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
 <?php endif; ?>
 
+<!-- tabel rekap semua booking janji temu -->
 <div class="table-container">
   <table class="custom-table">
     <thead>
@@ -106,6 +111,7 @@ require_once __DIR__ . '/includes/header.php';
               </span>
             </td>
             <td>
+              <!-- form cepat buat ganti status atau hapus langsung dari tabel -->
               <form method="POST" action="manage-appointments.php" style="display: flex; gap: 8px; align-items: center;">
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="appointment_id" value="<?php echo $row['id']; ?>">
@@ -115,14 +121,14 @@ require_once __DIR__ . '/includes/header.php';
                   <option value="Canceled" <?php echo $row['status'] === 'Canceled' ? 'selected' : ''; ?>>Canceled</option>
                 </select>
                 <button type="submit" class="btn btn-primary btn-sm">Update</button>
-                <a href="manage-appointments.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this appointment?');">Delete</a>
+                <a href="manage-appointments.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin mau hapus data janji temu ini?');">Delete</a>
               </form>
             </td>
           </tr>
         <?php endwhile; ?>
       <?php else: ?>
         <tr>
-          <td colspan="7" style="text-align: center; padding: 20px;">No appointments found.</td>
+          <td colspan="7" style="text-align: center; padding: 20px;">Belum ada bookingan janji temu nih.</td>
         </tr>
       <?php endif; ?>
     </tbody>

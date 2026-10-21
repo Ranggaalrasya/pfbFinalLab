@@ -1,4 +1,5 @@
-/* style.css - DocHelp styling matching project case UI */
+/* style.css - ini styling utama DocHelp biar tampilannya bersih, modern, dan mirip banget sama mockup soal */
+
 :root {
   --primary-color: #1d4ed8;
   --primary-hover: #1e40af;
@@ -13,6 +14,7 @@
   --table-header-bg: #e2e8f0;
 }
 
+/* reset margin padding bawaan browser biar seragam */
 * {
   margin: 0;
   padding: 0;
@@ -28,7 +30,7 @@ body {
   flex-direction: column;
 }
 
-/* Navbar */
+/* styling bagian navbar atas */
 .navbar {
   background-color: #ffffff;
   border-bottom: 1px solid var(--border-color);
@@ -81,7 +83,7 @@ body {
   margin-right: 8px;
 }
 
-/* Buttons */
+/* styling tombol-tombol (biru utama, putih outline, merah delete) */
 .btn {
   display: inline-block;
   padding: 8px 18px;
@@ -127,7 +129,7 @@ body {
   font-size: 0.85rem;
 }
 
-/* Layout */
+/* pembungkus tata letak konten utama */
 .main-container {
   max-width: 1200px;
   margin: 32px auto;
@@ -149,7 +151,7 @@ body {
   font-size: 1rem;
 }
 
-/* Alerts */
+/* kotak alert buat nampilin pesan error merah / pesan sukses ijo */
 .alert {
   padding: 12px 16px;
   border-radius: 6px;
@@ -169,7 +171,7 @@ body {
   color: #166534;
 }
 
-/* Cards & Grid */
+/* kartu dan tata letak grid dokter */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -205,7 +207,7 @@ body {
   margin-top: 18px;
 }
 
-/* Forms */
+/* styling form input, select, textarea */
 .form-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -249,7 +251,7 @@ body {
   gap: 8px;
 }
 
-/* Tables */
+/* styling tabel data biar rapi */
 .table-container {
   overflow-x: auto;
   background: #ffffff;
@@ -290,7 +292,7 @@ body {
   align-items: center;
 }
 
-/* Schedule Table in Manage Doctors */
+/* tabel khusus jadwal praktek pas admin lagi setting dokter */
 .schedule-grid-table {
   width: 100%;
   border-collapse: collapse;
@@ -309,7 +311,7 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
-/* Status Badges */
+/* lencana status (badge) warna-warni biar gampang dibedain */
 .badge {
   display: inline-block;
   padding: 4px 10px;
@@ -336,7 +338,7 @@ body {
   color: #991b1b;
 }
 
-/* Footer */
+/* styling footer di bawah */
 .footer {
   margin-top: auto;
   background-color: #ffffff;
@@ -351,7 +353,7 @@ body {
   font-size: 0.9rem;
 }
 
-/* Responsive adjustments */
+/* pengaturan responsive biar di HP atau tablet tetap enak dilihat */
 @media (max-width: 860px) {
   .navbar {
     padding: 14px 16px;
@@ -379,4 +381,3 @@ body {
     margin: 20px auto;
   }
 }
-

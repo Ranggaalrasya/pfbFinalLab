@@ -1,30 +1,33 @@
 <?php
-// manage-doctors.php - Admin Manage Doctors & Schedules
+// manage-doctors.php - menu sakti admin buat ngatur data dokter dan jadwal praktek mingguan
 $pageTitle = 'Manage Doctors';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// satpam: cuma admin yang boleh masuk
 requireAdmin();
 
 $errors = [];
 $success = '';
 
+// nangkep pesan sukses dari query string (hasil redirect)
 if (isset($_GET['msg'])) {
-    if ($_GET['msg'] === 'added') $success = "Doctor added successfully.";
-    elseif ($_GET['msg'] === 'updated') $success = "Doctor updated successfully.";
-    elseif ($_GET['msg'] === 'deleted') $success = "Doctor deleted successfully.";
+    if ($_GET['msg'] === 'added') $success = "Dokter baru berhasil didaftarkan ke sistem!";
+    elseif ($_GET['msg'] === 'updated') $success = "Data dokter & jadwal praktek berhasil diperbarui!";
+    elseif ($_GET['msg'] === 'deleted') $success = "Dokter berhasil dihapus beserta jadwal prakteknya.";
 }
 
+// daftar 7 hari seminggu
 $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-// Fetch specialties for dropdown
+// tarik list spesialisasi buat ngisi pilihan dropdown
 $specialtiesRes = $conn->query("SELECT * FROM specialties ORDER BY specialty_name ASC");
 $allSpecialties = [];
 while ($s = $specialtiesRes->fetch_assoc()) {
     $allSpecialties[] = $s;
 }
 
-// Handle Delete Doctor
+// aksi kalo admin ngeklik tombol delete dokter
 if (isset($_GET['delete'])) {
     $delId = intval($_GET['delete']);
     $stmt = $conn->prepare("DELETE FROM doctors WHERE id = ?");
@@ -34,12 +37,12 @@ if (isset($_GET['delete'])) {
         header("Location: manage-doctors.php?msg=deleted");
         exit();
     } else {
-        $errors[] = "Failed to delete doctor: " . $conn->error;
+        $errors[] = "Gagal ngehapus dokter: " . $conn->error;
         $stmt->close();
     }
 }
 
-// Form state
+// variabel penampung form
 $editId = intval($_GET['edit'] ?? 0);
 $doctorName = '';
 $specialtyId = 0;
@@ -49,7 +52,7 @@ $rating = 4.5;
 $location = '';
 $schedulesData = [];
 
-// Populate form if editing
+// kalo lagi mode edit, isi form pake data lama dari database
 if ($editId > 0) {
     $stmt = $conn->prepare("SELECT * FROM doctors WHERE id = ?");
     $stmt->bind_param("i", $editId);
@@ -63,7 +66,7 @@ if ($editId > 0) {
         $rating = $d['rating'];
         $location = $d['clinic_location'];
 
-        // Get schedules
+        // tarik jadwal praktek dokter yang bersangkutan
         $stmtS = $conn->prepare("SELECT day_of_week, start_time, end_time FROM schedules WHERE doctor_id = ?");
         $stmtS->bind_param("i", $editId);
         $stmtS->execute();
@@ -80,7 +83,7 @@ if ($editId > 0) {
     $stmt->close();
 }
 
-// Handle Add / Edit Submission
+// proses submit form tambah/edit dokter
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postEditId = intval($_POST['edit_id'] ?? 0);
     $doctorName = trim($_POST['doctor_name'] ?? '');
@@ -93,11 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startTimes = $_POST['start_time'] ?? [];
     $endTimes = $_POST['end_time'] ?? [];
 
-    // Validations
+    // validasi form dokter sesuai ketentuan soal
     if (empty($doctorName)) {
-        $errors[] = "Doctor Name must be filled.";
+        $errors[] = "Nama dokter jangan dikosongin ya.";
     } else {
-        // Unique name check
+        // cek keunikan nama dokter
         if ($postEditId > 0) {
             $stmt = $conn->prepare("SELECT id FROM doctors WHERE doctor_name = ? AND id != ?");
             $stmt->bind_param("si", $doctorName, $postEditId);
@@ -107,56 +110,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->execute();
         if ($stmt->get_result()->num_rows > 0) {
-            $errors[] = "Doctor Name must be unique. A doctor with this name already exists.";
+            $errors[] = "Nama dokter udah kedaftar, pake nama lain yang unik ya.";
         }
         $stmt->close();
     }
 
     if ($specialtyId <= 0) {
-        $errors[] = "Please select a valid specialty.";
+        $errors[] = "Pilih salah satu spesialisasi dokternya.";
     }
 
     if ($fee === '') {
-        $errors[] = "Service Fee must be filled.";
+        $errors[] = "Biaya jasa konsultasi (Service Fee) wajib diisi.";
     } elseif (!is_numeric($fee) || floatval($fee) < 0) {
-        $errors[] = "Service Fee must be numeric.";
+        $errors[] = "Biaya jasa konsultasi harus angka positif ya.";
     }
 
     if (empty($location)) {
-        $errors[] = "Clinic Location must be filled.";
+        $errors[] = "Lokasi klinik dokter wajib diisi.";
     }
 
+    // kalo ga ada masalah pada validasi
     if (empty($errors)) {
         $feeFloat = floatval($fee);
 
         if ($postEditId > 0) {
-            // Update doctor
+            // mode update dokter
             $stmt = $conn->prepare("UPDATE doctors SET doctor_name = ?, specialty_id = ?, bio = ?, price_rate = ?, rating = ?, clinic_location = ? WHERE id = ?");
             $stmt->bind_param("sisddsi", $doctorName, $specialtyId, $bio, $feeFloat, $rating, $location, $postEditId);
             $stmt->execute();
             $stmt->close();
 
             $targetDoctorId = $postEditId;
-            $success = "Doctor updated successfully.";
         } else {
-            // Insert doctor
+            // mode tambah dokter baru
             $stmt = $conn->prepare("INSERT INTO doctors (doctor_name, specialty_id, bio, price_rate, rating, clinic_location) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sisdds", $doctorName, $specialtyId, $bio, $feeFloat, $rating, $location);
             $stmt->execute();
             $targetDoctorId = $stmt->insert_id;
             $stmt->close();
-
-            $success = "Doctor added successfully.";
         }
 
-        // Update weekly schedules
-        // First delete existing schedules for this doctor
+        // atur ulang jadwal praktek dokter
+        // hapus jadwal lama dokter ini dulu
         $stmtDelSch = $conn->prepare("DELETE FROM schedules WHERE doctor_id = ?");
         $stmtDelSch->bind_param("i", $targetDoctorId);
         $stmtDelSch->execute();
         $stmtDelSch->close();
 
-        // Insert selected days
+        // masukin jadwal untuk hari-hari yang dicentang
         if (!empty($postedDays) && is_array($postedDays)) {
             $stmtInsSch = $conn->prepare("INSERT INTO schedules (doctor_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)");
             foreach ($postedDays as $day) {
@@ -176,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all doctors for table
+// ambil seluruh dokter untuk ditampilin di tabel admin
 $doctorsList = $conn->query("SELECT d.*, s.specialty_name 
                             FROM doctors d 
                             JOIN specialties s ON d.specialty_id = s.id 
@@ -187,6 +188,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Admin - Manage Doctors</h1>
 
+<!-- alert error -->
 <?php if (!empty($errors)): ?>
   <div class="alert alert-danger">
     <ul style="margin-left: 20px;">
@@ -197,10 +199,12 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
+<!-- alert notifikasi sukses -->
 <?php if (!empty($success)): ?>
   <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
 <?php endif; ?>
 
+<!-- form input data dokter & jadwal -->
 <div class="form-card" style="max-width: 900px;">
   <form method="POST" action="manage-doctors.php">
     <input type="hidden" name="edit_id" value="<?php echo $editId; ?>">
@@ -242,9 +246,10 @@ require_once __DIR__ . '/includes/header.php';
       <input type="text" id="clinic_location" name="clinic_location" class="form-control" value="<?php echo htmlspecialchars($location); ?>" required>
     </div>
 
+    <!-- konfigurasi jadwal kerja mingguan dokter -->
     <div class="form-group">
       <label class="form-label">Practice Schedule</label>
-      <p class="section-desc" style="margin-bottom: 8px; font-size: 0.9rem;">Enable each working day and set start-end time.</p>
+      <p class="section-desc" style="margin-bottom: 8px; font-size: 0.9rem;">Centang hari praktek dan tentukan jam mulai serta jam selesainya.</p>
       
       <table class="schedule-grid-table">
         <thead>
@@ -289,6 +294,7 @@ require_once __DIR__ . '/includes/header.php';
   </form>
 </div>
 
+<!-- tabel katalog seluruh dokter -->
 <div class="table-container">
   <table class="custom-table">
     <thead>
@@ -315,14 +321,14 @@ require_once __DIR__ . '/includes/header.php';
             <td>
               <div class="table-actions">
                 <a href="manage-doctors.php?edit=<?php echo $doc['id']; ?>" class="btn btn-outline btn-sm">Edit</a>
-                <a href="manage-doctors.php?delete=<?php echo $doc['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this doctor?');">Delete</a>
+                <a href="manage-doctors.php?delete=<?php echo $doc['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin mau menghapus dokter ini? Semua jadwalnya juga bakal ikut terhapus!');">Delete</a>
               </div>
             </td>
           </tr>
         <?php endwhile; ?>
       <?php else: ?>
         <tr>
-          <td colspan="7" style="text-align: center; padding: 20px;">No doctors found.</td>
+          <td colspan="7" style="text-align: center; padding: 20px;">Belum ada dokter yang terdaftar.</td>
         </tr>
       <?php endif; ?>
     </tbody>
