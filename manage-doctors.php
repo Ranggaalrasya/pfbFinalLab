@@ -8,6 +8,13 @@ requireAdmin();
 
 $errors = [];
 $success = '';
+
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'added') $success = "Doctor added successfully.";
+    elseif ($_GET['msg'] === 'updated') $success = "Doctor updated successfully.";
+    elseif ($_GET['msg'] === 'deleted') $success = "Doctor deleted successfully.";
+}
+
 $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // Fetch specialties for dropdown
@@ -23,11 +30,13 @@ if (isset($_GET['delete'])) {
     $stmt = $conn->prepare("DELETE FROM doctors WHERE id = ?");
     $stmt->bind_param("i", $delId);
     if ($stmt->execute()) {
-        $success = "Doctor deleted successfully.";
+        $stmt->close();
+        header("Location: manage-doctors.php?msg=deleted");
+        exit();
     } else {
         $errors[] = "Failed to delete doctor: " . $conn->error;
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 // Form state
@@ -161,15 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtInsSch->close();
         }
 
-        // Reset form
-        $editId = 0;
-        $doctorName = '';
-        $specialtyId = 0;
-        $bio = '';
-        $fee = '';
-        $rating = 4.5;
-        $location = '';
-        $schedulesData = [];
+        $redirectMsg = ($postEditId > 0) ? 'updated' : 'added';
+        header("Location: manage-doctors.php?msg=" . $redirectMsg);
+        exit();
     }
 }
 

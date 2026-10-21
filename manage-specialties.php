@@ -9,17 +9,25 @@ requireAdmin();
 $errors = [];
 $success = '';
 
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'added') $success = "Specialty added successfully.";
+    elseif ($_GET['msg'] === 'updated') $success = "Specialty updated successfully.";
+    elseif ($_GET['msg'] === 'deleted') $success = "Specialty deleted successfully.";
+}
+
 // Handle Delete
 if (isset($_GET['delete'])) {
     $delId = intval($_GET['delete']);
     $stmt = $conn->prepare("DELETE FROM specialties WHERE id = ?");
     $stmt->bind_param("i", $delId);
     if ($stmt->execute()) {
-        $success = "Specialty deleted successfully.";
+        $stmt->close();
+        header("Location: manage-specialties.php?msg=deleted");
+        exit();
     } else {
         $errors[] = "Failed to delete specialty: " . $conn->error;
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 // Handle Add / Edit
@@ -65,16 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("si", $specialtyName, $postEditId);
             $stmt->execute();
             $stmt->close();
-            $success = "Specialty updated successfully.";
-            $editId = 0;
-            $specialtyName = '';
+            header("Location: manage-specialties.php?msg=updated");
+            exit();
         } else {
             $stmt = $conn->prepare("INSERT INTO specialties (specialty_name) VALUES (?)");
             $stmt->bind_param("s", $specialtyName);
             $stmt->execute();
             $stmt->close();
-            $success = "Specialty added successfully.";
-            $specialtyName = '';
+            header("Location: manage-specialties.php?msg=added");
+            exit();
         }
     }
 }

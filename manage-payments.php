@@ -9,6 +9,10 @@ requireAdmin();
 $errors = [];
 $success = '';
 
+if (isset($_GET['msg']) && $_GET['msg'] === 'updated') {
+    $success = "Payment verification status updated successfully.";
+}
+
 // Handle Status Save
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_payment') {
     $paymentId = intval($_POST['payment_id'] ?? 0);
@@ -19,11 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmt = $conn->prepare("UPDATE payments SET status = ? WHERE id = ?");
         $stmt->bind_param("si", $newStatus, $paymentId);
         if ($stmt->execute()) {
-            $success = "Payment #{$paymentId} status updated to {$newStatus}.";
+            $stmt->close();
+            header("Location: manage-payments.php?msg=updated");
+            exit();
         } else {
             $errors[] = "Failed to update payment: " . $conn->error;
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
 

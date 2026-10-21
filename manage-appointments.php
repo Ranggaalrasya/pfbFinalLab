@@ -9,6 +9,11 @@ requireAdmin();
 $errors = [];
 $success = '';
 
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'updated') $success = "Appointment status updated successfully.";
+    elseif ($_GET['msg'] === 'deleted') $success = "Appointment deleted successfully.";
+}
+
 // Handle Status Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
     $apptId = intval($_POST['appointment_id'] ?? 0);
@@ -19,11 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmt = $conn->prepare("UPDATE appointments SET status = ? WHERE id = ?");
         $stmt->bind_param("si", $newStatus, $apptId);
         if ($stmt->execute()) {
-            $success = "Appointment #{$apptId} status updated to {$newStatus}.";
+            $stmt->close();
+            header("Location: manage-appointments.php?msg=updated");
+            exit();
         } else {
             $errors[] = "Failed to update appointment: " . $conn->error;
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
 
@@ -33,11 +40,13 @@ if (isset($_GET['delete'])) {
     $stmt = $conn->prepare("DELETE FROM appointments WHERE id = ?");
     $stmt->bind_param("i", $delId);
     if ($stmt->execute()) {
-        $success = "Appointment #{$delId} deleted successfully.";
+        $stmt->close();
+        header("Location: manage-appointments.php?msg=deleted");
+        exit();
     } else {
         $errors[] = "Failed to delete appointment: " . $conn->error;
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 // Fetch all appointments
