@@ -45,4 +45,4 @@ $currentPage = basename($_SERVER['PHP_SELF']);
   </div>
 </nav>
 
-<div class="main-container">
+<main class="main-container">

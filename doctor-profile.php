@@ -78,8 +78,10 @@ $schedulesRes = $stmtSched->get_result();
 </div>
 
 <div style="margin-bottom: 30px;">
-  <?php if (isLoggedIn()): ?>
+  <?php if (isMember()): ?>
     <a href="book-appointment.php?doctor_id=<?php echo $doctor['id']; ?>" class="btn btn-primary">Book Appointment</a>
+  <?php elseif (isAdmin()): ?>
+    <button class="btn btn-outline" disabled title="Admins cannot book appointments">Book Appointment (Member Only)</button>
   <?php else: ?>
     <a href="login.php?redirect=book-appointment.php?doctor_id=<?php echo $doctor['id']; ?>" class="btn btn-primary">Book Appointment</a>
   <?php endif; ?>

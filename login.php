@@ -12,6 +12,12 @@ if (isLoggedIn()) {
 
 $error = '';
 $email = '';
+$successMsg = '';
+$redirect = trim($_GET['redirect'] ?? ($_POST['redirect'] ?? ''));
+
+if (isset($_GET['registered'])) {
+    $successMsg = "Registration successful! Please login with your credentials.";
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -41,7 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setcookie('dochelp_user_id', (string)$user['id'], time() + (7 * 24 * 60 * 60), "/");
                 }
 
-                header("Location: index.php");
+                $targetUrl = 'index.php';
+                if (!empty($redirect) && !preg_match('/^https?:\/\//i', $redirect)) {
+                    $targetUrl = $redirect;
+                }
+
+                header("Location: " . $targetUrl);
                 exit();
             } else {
                 $error = "Invalid password. Please try again.";
@@ -58,12 +69,17 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Login</h1>
 
+<?php if (!empty($successMsg)): ?>
+  <div class="alert alert-success"><?php echo htmlspecialchars($successMsg); ?></div>
+<?php endif; ?>
+
 <?php if (!empty($error)): ?>
   <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
 <?php endif; ?>
 
 <div class="form-card">
   <form method="POST" action="login.php">
+    <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($redirect); ?>">
     <div class="form-group">
       <label for="email" class="form-label">Email</label>
       <input type="email" id="email" name="email" class="form-control" value="<?php echo htmlspecialchars($email); ?>" required>

@@ -64,6 +64,9 @@ $doctorsResult = $stmt->get_result();
     </div>
 
     <button type="submit" class="btn btn-primary">Filter</button>
+    <?php if (!empty($searchName) || $specialtyFilter > 0): ?>
+      <a href="doctors.php" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
+    <?php endif; ?>
   </form>
 </div>
 

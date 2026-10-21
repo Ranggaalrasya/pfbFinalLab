@@ -350,3 +350,33 @@ body {
   color: #64748b;
   font-size: 0.9rem;
 }
+
+/* Responsive adjustments */
+@media (max-width: 860px) {
+  .navbar {
+    padding: 14px 16px;
+  }
+  .nav-container {
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .nav-brand {
+    text-align: center;
+  }
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  .nav-auth {
+    justify-content: center;
+  }
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .main-container {
+    margin: 20px auto;
+  }
+}
+

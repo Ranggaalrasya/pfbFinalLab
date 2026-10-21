@@ -138,7 +138,7 @@ require_once __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <div class="form-card">
-  <form method="POST" action="book-appointment.php" id="bookingForm">
+  <form method="POST" action="book-appointment.php" id="slotsForm">
     <div class="form-group">
       <label for="doctor_id" class="form-label">Select Doctor</label>
       <select id="doctor_id" name="doctor_id" class="form-control" required>
@@ -160,11 +160,16 @@ require_once __DIR__ . '/includes/header.php';
              min="<?php echo date('Y-m-d'); ?>" required>
     </div>
 
-    <button type="submit" name="action" value="show_slots" class="btn btn-primary" style="margin-bottom: 20px;">Show Slots</button>
+    <button type="submit" name="action" value="show_slots" class="btn btn-primary">Show Slots</button>
+  </form>
+</div>
 
-    <?php if ($slotsChecked && !empty($availableSlots)): ?>
-      <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
-      
+<?php if ($slotsChecked && !empty($availableSlots)): ?>
+  <div class="form-card">
+    <form method="POST" action="book-appointment.php" id="bookingForm">
+      <input type="hidden" name="doctor_id" value="<?php echo $selectedDoctorId; ?>">
+      <input type="hidden" name="appointment_date" value="<?php echo htmlspecialchars($selectedDate); ?>">
+
       <div class="form-group">
         <label for="time_slot" class="form-label">Available Time Slots</label>
         <select id="time_slot" name="time_slot" class="form-control" required>
@@ -177,8 +182,8 @@ require_once __DIR__ . '/includes/header.php';
       </div>
 
       <button type="submit" name="action" value="book_now" class="btn btn-primary">Book Now</button>
-    <?php endif; ?>
-  </form>
-</div>
+    </form>
+  </div>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

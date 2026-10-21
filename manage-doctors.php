@@ -151,8 +151,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($postedDays) && is_array($postedDays)) {
             $stmtInsSch = $conn->prepare("INSERT INTO schedules (doctor_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)");
             foreach ($postedDays as $day) {
-                $st = !empty($startTimes[$day]) ? $startTimes[$day] . ':00' : '09:00:00';
-                $et = !empty($endTimes[$day]) ? $endTimes[$day] . ':00' : '17:00:00';
+                $rawStart = !empty($startTimes[$day]) ? $startTimes[$day] : '09:00';
+                $rawEnd = !empty($endTimes[$day]) ? $endTimes[$day] : '17:00';
+                $st = date('H:i:00', strtotime($rawStart));
+                $et = date('H:i:00', strtotime($rawEnd));
                 $stmtInsSch->bind_param("isss", $targetDoctorId, $day, $st, $et);
                 $stmtInsSch->execute();
             }
