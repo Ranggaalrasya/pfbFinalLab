@@ -13,6 +13,7 @@ $sql = "SELECT d.id, d.doctor_name, d.bio, d.price_rate, d.rating, d.clinic_loca
 $result = $conn->query($sql);
 ?>
 
+<<<<<<< HEAD
 <!-- dekorasi hero banner atas -->
 <div class="hero-banner">
   <div>
@@ -47,15 +48,28 @@ $result = $conn->query($sql);
   <p class="section-desc" style="margin-bottom: 16px;">Pilih dokter terbaik sesuai kebutuhan kesehatanmu hari ini.</p>
 </div>
 
+=======
+<!-- bagian judul utama / sambutan -->
+<div class="hero-section">
+  <h1 class="page-title">DocHelp - Doctor Appointment Booking</h1>
+  <p class="section-desc">Meet some of our doctors!</p>
+</div>
+
+>>>>>>> 547b7aaeffa3c8eab2aaeff26c599cb1bab36230
 <!-- nampilin kartu dokter dalam bentuk grid yang rapi -->
 <div class="cards-grid">
   <?php if ($result && $result->num_rows > 0): ?>
     <?php while ($doctor = $result->fetch_assoc()): ?>
+<<<<<<< HEAD
       <!-- kartu per dokter dengan efek hover halus -->
       <div class="card card-hover">
         <div class="doctor-avatar-badge">
           <?php echo strtoupper(substr($doctor['doctor_name'], 0, 1)); ?>
         </div>
+=======
+      <!-- kartu per dokter -->
+      <div class="card">
+>>>>>>> 547b7aaeffa3c8eab2aaeff26c599cb1bab36230
         <h2 class="card-title"><?php echo htmlspecialchars($doctor['doctor_name']); ?></h2>
         <p class="card-info"><strong>Specialty:</strong> <?php echo htmlspecialchars($doctor['specialty_name']); ?></p>
         <p class="card-info"><strong>Rating:</strong> &#x2B50; <?php echo number_format($doctor['rating'], 1); ?>/5</p>
