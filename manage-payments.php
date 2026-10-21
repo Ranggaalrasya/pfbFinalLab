@@ -1,19 +1,21 @@
 <?php
-// manage-payments.php - Admin Manage Payments
+// manage-payments.php - panel verifikasi bukti pembayaran pasien oleh admin
 $pageTitle = 'Manage Payments';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// akses eksklusif admin
 requireAdmin();
 
 $errors = [];
 $success = '';
 
+// nangkep pesan sukses setelah simpan status (pola PRG)
 if (isset($_GET['msg']) && $_GET['msg'] === 'updated') {
-    $success = "Payment verification status updated successfully.";
+    $success = "Status verifikasi pembayaran berhasil disimpan cuy!";
 }
 
-// Handle Status Save
+// proses saat admin ganti status pembayaran (pending -> approved / rejected)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_payment') {
     $paymentId = intval($_POST['payment_id'] ?? 0);
     $newStatus = trim($_POST['status'] ?? '');
@@ -27,13 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             header("Location: manage-payments.php?msg=updated");
             exit();
         } else {
-            $errors[] = "Failed to update payment: " . $conn->error;
+            $errors[] = "Gagal memperbarui status verifikasi pembayaran: " . $conn->error;
             $stmt->close();
         }
     }
 }
 
-// Fetch all payments
+// ambil semua data pembayaran dan gabungin sama relasi janji, pasien, & dokter
 $sql = "SELECT p.id AS payment_id, p.amount, p.proof_image, p.status AS payment_status,
                a.id AS appt_id,
                u.name AS patient_name,
@@ -50,6 +52,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Admin - Payment Verification</h1>
 
+<!-- alert error -->
 <?php if (!empty($errors)): ?>
   <div class="alert alert-danger">
     <ul style="margin-left: 20px;">
@@ -60,10 +63,12 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
+<!-- alert sukses -->
 <?php if (!empty($success)): ?>
   <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
 <?php endif; ?>
 
+<!-- tabel verifikasi bukti pembayaran -->
 <div class="table-container">
   <table class="custom-table">
     <thead>
@@ -88,12 +93,13 @@ require_once __DIR__ . '/includes/header.php';
             <td><?php echo htmlspecialchars($row['doctor_name']); ?></td>
             <td>Rp <?php echo number_format($row['amount'], 0, ',', '.'); ?></td>
             <td>
+              <!-- thumbnail bukti transfer; diklik langsung buka gambar aslinya di tab baru -->
               <?php if (!empty($row['proof_image']) && file_exists(__DIR__ . '/uploads/' . $row['proof_image'])): ?>
-                <a href="uploads/<?php echo htmlspecialchars($row['proof_image']); ?>" target="_blank">
+                <a href="uploads/<?php echo htmlspecialchars($row['proof_image']); ?>" target="_blank" title="Klik buat liat ukuran penuh">
                   <img src="uploads/<?php echo htmlspecialchars($row['proof_image']); ?>" alt="Proof" style="max-height: 80px; max-width: 100px; border-radius: 4px; border: 1px solid #cbd5e1; object-fit: cover;">
                 </a>
               <?php else: ?>
-                <span style="color: #94a3b8; font-size: 0.85rem;">No proof file</span>
+                <span style="color: #94a3b8; font-size: 0.85rem;">Belum ada file bukti</span>
               <?php endif; ?>
             </td>
             <td>
@@ -102,6 +108,7 @@ require_once __DIR__ . '/includes/header.php';
               </span>
             </td>
             <td>
+              <!-- form cepat update status pembayaran -->
               <form method="POST" action="manage-payments.php" style="display: flex; gap: 8px; align-items: center;">
                 <input type="hidden" name="action" value="update_payment">
                 <input type="hidden" name="payment_id" value="<?php echo $row['payment_id']; ?>">
@@ -117,7 +124,7 @@ require_once __DIR__ . '/includes/header.php';
         <?php endwhile; ?>
       <?php else: ?>
         <tr>
-          <td colspan="8" style="text-align: center; padding: 20px;">No payments found.</td>
+          <td colspan="8" style="text-align: center; padding: 20px;">Belum ada transaksi pembayaran yang masuk.</td>
         </tr>
       <?php endif; ?>
     </tbody>

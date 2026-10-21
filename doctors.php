@@ -1,16 +1,17 @@
 <?php
-// doctors.php - DocHelp Doctor Listing with Search & Filter
+// doctors.php - ini halaman katalog dokter lengkap dengan fitur cari & filter spesialisasi
 $pageTitle = 'Doctor Listing';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/header.php';
 
+// tangkap kata kunci pencarian sama filter spesialisasi dari URL ($_GET)
 $searchName = trim($_GET['search_name'] ?? '');
 $specialtyFilter = intval($_GET['specialty_id'] ?? 0);
 
-// Fetch all specialties for dropdown
+// ambil semua daftar spesialisasi buat ngisi opsi dropdown filter
 $specResult = $conn->query("SELECT id, specialty_name FROM specialties ORDER BY specialty_name ASC");
 
-// Build query with filter
+// susun query SQL secara dinamis tergantung filter apa yang lagi dipilih
 $sql = "SELECT d.id, d.doctor_name, d.bio, d.price_rate, d.rating, d.clinic_location, s.specialty_name 
         FROM doctors d 
         JOIN specialties s ON d.specialty_id = s.id 
@@ -18,12 +19,14 @@ $sql = "SELECT d.id, d.doctor_name, d.bio, d.price_rate, d.rating, d.clinic_loca
 $params = [];
 $types = "";
 
+// kalo user ngetik nama dokter, tambahin klausa LIKE
 if (!empty($searchName)) {
     $sql .= " AND d.doctor_name LIKE ?";
     $params[] = "%" . $searchName . "%";
     $types .= "s";
 }
 
+// kalo user milih spesialisasi tertentu di dropdown
 if ($specialtyFilter > 0) {
     $sql .= " AND d.specialty_id = ?";
     $params[] = $specialtyFilter;
@@ -32,6 +35,7 @@ if ($specialtyFilter > 0) {
 
 $sql .= " ORDER BY d.doctor_name ASC";
 
+// eksekusi query pake prepared statement biar aman
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
@@ -42,6 +46,7 @@ $doctorsResult = $stmt->get_result();
 
 <h1 class="page-title">Doctor Listing</h1>
 
+<!-- kotak form buat nyari dokter atau nyaring berdasarkan spesialisasi -->
 <div class="form-card" style="margin-bottom: 24px;">
   <form method="GET" action="doctors.php">
     <div class="form-group">
@@ -65,11 +70,13 @@ $doctorsResult = $stmt->get_result();
 
     <button type="submit" class="btn btn-primary">Filter</button>
     <?php if (!empty($searchName) || $specialtyFilter > 0): ?>
+      <!-- tombol reset buat ngebersihin filter pencarian dengan sekali klik -->
       <a href="doctors.php" class="btn btn-outline" style="margin-left: 8px;">Reset</a>
     <?php endif; ?>
   </form>
 </div>
 
+<!-- list kartu dokter yang berhasil ditemukan -->
 <div class="doctors-list" style="display: flex; flex-direction: column; gap: 20px;">
   <?php if ($doctorsResult && $doctorsResult->num_rows > 0): ?>
     <?php while ($doc = $doctorsResult->fetch_assoc()): ?>
@@ -87,8 +94,9 @@ $doctorsResult = $stmt->get_result();
       </div>
     <?php endwhile; ?>
   <?php else: ?>
+    <!-- tampilan kalo dokternya ga ketemu sama sekali -->
     <div class="card">
-      <p>No doctors found matching your criteria.</p>
+      <p>Yah dokter yang kamu cari ga ketemu nih bro. Coba kata kunci lain ya.</p>
     </div>
   <?php endif; ?>
 </div>

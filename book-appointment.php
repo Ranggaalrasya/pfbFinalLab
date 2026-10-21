@@ -1,9 +1,10 @@
 <?php
-// book-appointment.php - Member Appointment Booking
+// book-appointment.php - halaman buat member reservasi janji temu sama dokter pilihan
 $pageTitle = 'Appointment Booking';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// kunci pintu: cuma member yang berhak bikin janji
 requireMember();
 
 $memberId = $_SESSION['user_id'];
@@ -11,20 +12,22 @@ $errors = [];
 $availableSlots = [];
 $slotsChecked = false;
 
+// tangkap inputan dokter, tanggal, dan slot jam yang dipilih
 $selectedDoctorId = intval($_GET['doctor_id'] ?? ($_POST['doctor_id'] ?? 0));
 $selectedDate = trim($_POST['appointment_date'] ?? ($_GET['date'] ?? ''));
 $selectedSlot = trim($_POST['time_slot'] ?? '');
 
-// Fetch all doctors for dropdown
+// tarik semua dokter yang terdaftar buat isi opsi dropdown
 $allDoctors = $conn->query("SELECT id, doctor_name FROM doctors ORDER BY doctor_name ASC");
 
-// Function to calculate slots
+// fungsi pinter buat ngitung slot jam yang beneran masih kosong
 function getDoctorAvailableSlots($conn, $doctorId, $date) {
     if ($doctorId <= 0 || empty($date)) return [];
     
-    $dayOfWeek = date('l', strtotime($date)); // e.g., 'Monday'
+    // cari tau ini hari apa (Senin, Selasa, dst)
+    $dayOfWeek = date('l', strtotime($date));
     
-    // Check doctor schedule on that day
+    // cek jam praktek dokter di hari tersebut
     $stmt = $conn->prepare("SELECT start_time, end_time FROM schedules WHERE doctor_id = ? AND day_of_week = ?");
     $stmt->bind_param("is", $doctorId, $dayOfWeek);
     $stmt->execute();
@@ -32,7 +35,7 @@ function getDoctorAvailableSlots($conn, $doctorId, $date) {
     
     if (!$schRes || $schRes->num_rows === 0) {
         $stmt->close();
-        return [];
+        return []; // dokter ga praktek di hari ini
     }
     
     $schedule = $schRes->fetch_assoc();
@@ -41,7 +44,7 @@ function getDoctorAvailableSlots($conn, $doctorId, $date) {
     $startTime = strtotime($schedule['start_time']);
     $endTime = strtotime($schedule['end_time']);
     
-    // Generate hourly slots
+    // generate slot per 1 jam
     $allSlots = [];
     $curr = $startTime;
     while ($curr < $endTime) {
@@ -49,7 +52,7 @@ function getDoctorAvailableSlots($conn, $doctorId, $date) {
         $curr = strtotime('+1 hour', $curr);
     }
     
-    // Query already booked slots for this doctor on this date
+    // cek siapa aja yang udah booking dokter ini di tanggal yang sama (yang belum di-cancel)
     $stmtBooked = $conn->prepare("SELECT time_slot FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND status != 'Canceled'");
     $stmtBooked->bind_param("is", $doctorId, $date);
     $stmtBooked->execute();
@@ -61,50 +64,51 @@ function getDoctorAvailableSlots($conn, $doctorId, $date) {
     }
     $stmtBooked->close();
     
-    // Available = All - Booked
+    // slot kosong = semua slot dikurangin slot yang udah dibooking orang
     return array_values(array_diff($allSlots, $bookedSlots));
 }
 
-// Handle "Show Slots" action
+// pas tombol "Show Slots" dipencet
 if (isset($_POST['action']) && $_POST['action'] === 'show_slots') {
     $slotsChecked = true;
     if ($selectedDoctorId <= 0) {
-        $errors[] = "Please select a doctor.";
+        $errors[] = "Pilih dokternya dulu dong.";
     }
     if (empty($selectedDate)) {
-        $errors[] = "Please select an appointment date.";
+        $errors[] = "Pilih tanggal janjinya juga ya.";
     } elseif ($selectedDate < date('Y-m-d')) {
-        $errors[] = "Date Appointment must be present or future date.";
+        $errors[] = "Tanggal appointment harus hari ini atau tanggal di masa depan ya cuy!";
     } else {
         $availableSlots = getDoctorAvailableSlots($conn, $selectedDoctorId, $selectedDate);
         if (empty($availableSlots)) {
-            $errors[] = "No available time slots on this date (Doctor is either not practicing or fully booked).";
+            $errors[] = "Waduh ga ada slot jam yang kosong di tanggal ini (antara dokternya libur atau udah full booking).";
         }
     }
 }
 
-// Handle "Book Now" submission
+// pas tombol "Book Now" ditekan
 if (isset($_POST['action']) && $_POST['action'] === 'book_now') {
     if ($selectedDoctorId <= 0) {
-        $errors[] = "Please select a doctor.";
+        $errors[] = "Dokter wajib dipilih.";
     }
     if (empty($selectedDate)) {
-        $errors[] = "Please select an appointment date.";
+        $errors[] = "Tanggal appointment wajib diisi.";
     } elseif ($selectedDate < date('Y-m-d')) {
-        $errors[] = "Date Appointment must be present or future date.";
+        $errors[] = "Tanggal appointment ga boleh tanggal masa lalu ya.";
     }
 
     if (empty($selectedSlot)) {
-        $errors[] = "Please select an available time slot.";
+        $errors[] = "Pilih salah satu jam yang masih kosong.";
     } else {
-        // Validate slot strictly
+        // validasi ketat biar ga ada yang curang nyuntik slot yang udah diambil
         $validSlots = getDoctorAvailableSlots($conn, $selectedDoctorId, $selectedDate);
         $normalizedSlot = date('H:i:00', strtotime($selectedSlot));
         if (!in_array($normalizedSlot, $validSlots)) {
-            $errors[] = "Selected time slot is not available or outside the doctor's shift.";
+            $errors[] = "Slot jam yang kamu pilih udah ga tersedia atau di luar jam kerja dokter.";
         }
     }
 
+    // kalo validasi aman, simpen data appointment ke database
     if (empty($errors)) {
         $status = 'Waiting';
         $normalizedSlot = date('H:i:00', strtotime($selectedSlot));
@@ -114,10 +118,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'book_now') {
         if ($stmtInsert->execute()) {
             $newAppointmentId = $stmtInsert->insert_id;
             $stmtInsert->close();
+            // langsung oper member ke halaman pembayaran
             header("Location: payment.php?appointment_id=" . $newAppointmentId);
             exit();
         } else {
-            $errors[] = "Booking error: " . $conn->error;
+            $errors[] = "Gagal ngebooking: " . $conn->error;
         }
     }
 }
@@ -127,6 +132,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Appointment Booking</h1>
 
+<!-- alert kalo ada kesalahan input -->
 <?php if (!empty($errors)): ?>
   <div class="alert alert-danger">
     <ul style="margin-left: 20px;">
@@ -137,6 +143,7 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
+<!-- KARTU 1: milih dokter & tanggal -->
 <div class="form-card">
   <form method="POST" action="book-appointment.php" id="slotsForm">
     <div class="form-group">
@@ -164,6 +171,7 @@ require_once __DIR__ . '/includes/header.php';
   </form>
 </div>
 
+<!-- KARTU 2: muncul pas slot jam udah dicek dan ada yang kosong -->
 <?php if ($slotsChecked && !empty($availableSlots)): ?>
   <div class="form-card">
     <form method="POST" action="book-appointment.php" id="bookingForm">

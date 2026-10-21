@@ -1,9 +1,10 @@
 <?php
-// payment.php - Member Appointment Payment
+// payment.php - halaman pembayaran dan upload bukti transfer buat member
 $pageTitle = 'Payment Page';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// cuma member yang punya janji temu yang boleh bayar
 requireMember();
 
 $memberId = $_SESSION['user_id'];
@@ -14,7 +15,7 @@ if ($appointmentId <= 0) {
     exit();
 }
 
-// Fetch appointment & doctor info
+// ambil data janji temu & dokter, sekalian pastiin ini beneran janji miliknya si user
 $stmt = $conn->prepare("SELECT a.id, a.user_id, a.appointment_date, a.time_slot, a.status,
                                d.doctor_name, d.price_rate,
                                p.id AS payment_id, p.amount, p.proof_image, p.status AS payment_status
@@ -27,7 +28,7 @@ $stmt->execute();
 $res = $stmt->get_result();
 
 if (!$res || $res->num_rows === 0) {
-    echo "<p>Appointment not found or unauthorized access.</p>";
+    echo "<p>Janji temu ga ketemu atau kamu ga punya akses ke data ini.</p>";
     require_once __DIR__ . '/includes/footer.php';
     exit();
 }
@@ -35,69 +36,75 @@ if (!$res || $res->num_rows === 0) {
 $appt = $res->fetch_assoc();
 $stmt->close();
 
+// rincian biaya: tarif dokter + biaya admin platform Rp 10.000
 $consultationFee = floatval($appt['price_rate']);
 $adminFee = 10000;
 $grandTotal = $consultationFee + $adminFee;
 
 $errors = [];
 
+// proses saat member upload bukti pembayaran
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $transferAmount = trim($_POST['transfer_amount'] ?? '');
     
-    // Validate transfer amount
+    // validasi jumlah transfer
     if ($transferAmount === '') {
-        $errors[] = "Transfer Amount must be filled.";
+        $errors[] = "Jumlah transfer jangan dikosongin ya.";
     } elseif (!is_numeric($transferAmount)) {
-        $errors[] = "Transfer Amount must be numeric.";
+        $errors[] = "Jumlah transfer wajib angka murni bro.";
     }
 
-    // Validate uploaded file
+    // validasi file bukti transfer yang di-upload
     $uploadedFileName = '';
     if (!isset($_FILES['proof_image']) || $_FILES['proof_image']['error'] === UPLOAD_ERR_NO_FILE) {
         if (empty($appt['proof_image'])) {
-            $errors[] = "Upload Payment Proof must be filled.";
+            $errors[] = "Bukti transfer (Payment Proof) wajib di-upload.";
         } else {
-            $uploadedFileName = $appt['proof_image']; // Keep existing proof
+            // kalo ga upload baru, pertahankan gambar bukti yang udah ada
+            $uploadedFileName = $appt['proof_image'];
         }
     } else {
         $file = $_FILES['proof_image'];
         $allowedExtensions = ['jpg', 'jpeg', 'png'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
+        // pastikan ekstensinya cuma .jpg, .jpeg, atau .png sesuai soal
         if (!in_array($ext, $allowedExtensions)) {
-            $errors[] = "Upload Payment Proof must be .jpg or .png";
+            $errors[] = "Format file bukti pembayaran cuma boleh .jpg atau .png ya.";
         } elseif ($file['error'] !== UPLOAD_ERR_OK) {
-            $errors[] = "Error uploading file.";
+            $errors[] = "Ada masalah waktu proses upload gambar bukti.";
         } else {
-            // Save file
+            // bikin nama file unik pake prefix + id appointment + timestamp
             $newFileName = 'proof_' . $appointmentId . '_' . time() . '.' . $ext;
             $uploadTarget = __DIR__ . '/uploads/' . $newFileName;
             if (move_uploaded_file($file['tmp_name'], $uploadTarget)) {
                 $uploadedFileName = $newFileName;
             } else {
-                $errors[] = "Failed to save uploaded file.";
+                $errors[] = "Gagal mindahin file upload ke folder penyimpanan.";
             }
         }
     }
 
+    // kalo ga ada error, simpen / perbarui pembayaran di database
     if (empty($errors)) {
         $amountFloat = floatval($transferAmount);
         $status = 'pending';
 
         if (!empty($appt['payment_id'])) {
-            // Update existing payment
+            // update data pembayaran yang udah ada
             $stmtUp = $conn->prepare("UPDATE payments SET amount = ?, proof_image = ?, status = ? WHERE id = ?");
             $stmtUp->bind_param("dssi", $amountFloat, $uploadedFileName, $status, $appt['payment_id']);
             $stmtUp->execute();
             $stmtUp->close();
         } else {
-            // Insert new payment
+            // masukin data pembayaran baru
             $stmtIn = $conn->prepare("INSERT INTO payments (appointment_id, amount, proof_image, status) VALUES (?, ?, ?, ?)");
             $stmtIn->bind_param("idss", $appointmentId, $amountFloat, $uploadedFileName, $status);
             $stmtIn->execute();
             $stmtIn->close();
         }
 
+        // redirect ke dashboard pasien dengan notifikasi sukses
         header("Location: dashboard.php?msg=payment_submitted");
         exit();
     }
@@ -108,6 +115,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Payment Page</h1>
 
+<!-- kalo ada inputan yang salah -->
 <?php if (!empty($errors)): ?>
   <div class="alert alert-danger">
     <ul style="margin-left: 20px;">
@@ -118,6 +126,7 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
+<!-- KARTU 1: ringkasan rincian biaya (Fee Review) -->
 <div class="card" style="margin-bottom: 24px;">
   <h2 class="card-title" style="font-size: 1.15rem; margin-bottom: 16px;">Fee Review</h2>
   <p class="card-info"><strong>Doctor:</strong> <?php echo htmlspecialchars($appt['doctor_name']); ?></p>
@@ -126,6 +135,7 @@ require_once __DIR__ . '/includes/header.php';
   <p class="card-info" style="font-size: 1.1rem; margin-top: 10px;"><strong>Grand Total:</strong> Rp <?php echo number_format($grandTotal, 0, ',', '.'); ?></p>
 </div>
 
+<!-- KARTU 2: form input transfer & upload struk transfer -->
 <div class="form-card">
   <form method="POST" action="payment.php" enctype="multipart/form-data">
     <input type="hidden" name="appointment_id" value="<?php echo $appointmentId; ?>">
@@ -141,7 +151,7 @@ require_once __DIR__ . '/includes/header.php';
       <input type="file" id="proof_image" name="proof_image" class="form-control" accept=".jpg,.jpeg,.png">
       <?php if (!empty($appt['proof_image'])): ?>
         <p style="font-size: 0.85rem; color: #64748b; margin-top: 6px;">
-          Current proof uploaded: <strong><?php echo htmlspecialchars($appt['proof_image']); ?></strong>
+          Bukti yang udah di-upload sebelumnya: <strong><?php echo htmlspecialchars($appt['proof_image']); ?></strong>
         </p>
       <?php endif; ?>
     </div>

@@ -1,14 +1,15 @@
 <?php
-// dashboard.php - Patient Dashboard
+// dashboard.php - dashboard pasien buat mantau status janji temu dan status pembayaran
 $pageTitle = 'Patient Dashboard';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// cuma member yang boleh buka dashboard pasien ini
 requireMember();
 
 $memberId = $_SESSION['user_id'];
 
-// Query all appointments for this member
+// ambil seluruh riwayat appointment punya member yang lagi login, gabungin sama dokter & status pembayaran
 $sql = "SELECT a.id AS appt_id, a.appointment_date, a.time_slot, a.status AS consultation_status,
                d.doctor_name,
                p.id AS payment_id, p.status AS payment_status
@@ -28,10 +29,12 @@ require_once __DIR__ . '/includes/header.php';
 
 <h1 class="page-title">Patient Dashboard</h1>
 
+<!-- alert konfirmasi kalo baru aja beres upload struk pembayaran -->
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'payment_submitted'): ?>
-  <div class="alert alert-success">Payment submitted successfully! Our admin will review your payment shortly.</div>
+  <div class="alert alert-success">Pembayaran berhasil dikirim! Admin kita bakal ngecek dan verifikasi struk kamu secepatnya ya.</div>
 <?php endif; ?>
 
+<!-- tabel rangkuman janji temu pasien -->
 <div class="table-container">
   <table class="custom-table">
     <thead>
@@ -48,6 +51,7 @@ require_once __DIR__ . '/includes/header.php';
       <?php if ($result && $result->num_rows > 0): ?>
         <?php while ($row = $result->fetch_assoc()): ?>
           <?php 
+            // cek status bayar: kalo belum ada record pembayaran, kasih label "Not Paid"
             $payStatus = !empty($row['payment_status']) ? htmlspecialchars($row['payment_status']) : 'Not Paid';
             $badgeClass = 'badge-' . strtolower(str_replace(' ', '', $payStatus));
           ?>
@@ -66,6 +70,7 @@ require_once __DIR__ . '/includes/header.php';
               </span>
             </td>
             <td>
+              <!-- tombol buat bayar atau re-upload bukti transfer -->
               <a href="payment.php?appointment_id=<?php echo $row['appt_id']; ?>" class="btn btn-outline btn-sm">
                 Pay / Update Proof
               </a>
@@ -74,7 +79,7 @@ require_once __DIR__ . '/includes/header.php';
         <?php endwhile; ?>
       <?php else: ?>
         <tr>
-          <td colspan="6" style="text-align: center; padding: 24px;">No appointments found. <a href="book-appointment.php">Book an appointment now</a>.</td>
+          <td colspan="6" style="text-align: center; padding: 24px;">Kamu belum punya janji temu sama sekali nih. <a href="book-appointment.php">Yuk bikin janji sekarang</a>.</td>
         </tr>
       <?php endif; ?>
     </tbody>

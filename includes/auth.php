@@ -1,14 +1,16 @@
 <?php
 // includes/auth.php
-// Session management, Cookie authentication, and Route Guards
+// ini file sakti buat ngurusin session, cookie "remember me", sama ngejagain halaman biar ga sembarang orang bisa masuk
 
+// nyalain session kalo belum aktif
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/../config/db.php';
 
-// Handle 'Remember Me' Cookie (1 week duration)
+// cek fitur "Remember Me" lewat cookie (berlaku 1 minggu cuy)
+// kalo belum login tapi ada cookie, kita auto-loginin dia
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['dochelp_user_id'])) {
     $cookie_user_id = intval($_COOKIE['dochelp_user_id']);
     $stmt = $conn->prepare("SELECT id, name, email, role FROM users WHERE id = ?");
@@ -24,18 +26,22 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['dochelp_user_id'])) {
     $stmt->close();
 }
 
+// helper buat ngecek apakah si user udah login atau masih guest
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
 
+// helper khusus ngecek apakah role-nya Admin
 function isAdmin() {
     return isLoggedIn() && isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'admin';
 }
 
+// helper khusus ngecek apakah role-nya Member biasa
 function isMember() {
     return isLoggedIn() && isset($_SESSION['user_role']) && strtolower($_SESSION['user_role']) === 'member';
 }
 
+// satpam buat ngeblok yang belum login, tendang ke login.php
 function requireLogin() {
     if (!isLoggedIn()) {
         header("Location: login.php");
@@ -43,6 +49,7 @@ function requireLogin() {
     }
 }
 
+// satpam khusus halaman Admin, kalo bukan admin langsung lempar ke login
 function requireAdmin() {
     if (!isAdmin()) {
         header("Location: login.php");
@@ -50,6 +57,7 @@ function requireAdmin() {
     }
 }
 
+// satpam khusus halaman Member (misal booking & dashboard)
 function requireMember() {
     if (!isMember()) {
         header("Location: login.php");
