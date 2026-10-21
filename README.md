@@ -86,6 +86,6 @@ pfbFinalLab/
 ├── manage-payments.php         # Admin: Payment proof verification
 ├── dochelp.sql                 # Complete database schema + seed data
 ├── style.css                   # Custom responsive styling matching mockups
-├── javascript.js               # Client-side UI enhancements
+├── script.js                  # Client-side UI enhancements
 └── README.md                   # Documentation
 ```
